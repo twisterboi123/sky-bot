@@ -1005,6 +1005,23 @@ async def verifyadd(interaction: discord.Interaction, role: discord.Role, channe
     autorole_settings[guild_id]["verification"] = {"channel_id": target_channel.id, "message_id": msg.id, "role_id": role.id}
     await interaction.response.send_message(f"✅ Verification channel set: {target_channel.mention}\nUsers must react to the message to get {role.mention}.", ephemeral=True)
 
+# Slash command: Lock
+@bot.tree.command(name="lock", description="Lock a channel so @everyone cannot send messages (Admin only)")
+@app_commands.describe(channel="Channel to lock (optional, defaults to current)")
+@app_commands.checks.has_permissions(administrator=True)
+async def lock(interaction: discord.Interaction, channel: discord.TextChannel = None):
+    target_channel = channel or interaction.channel
+    guild = interaction.guild
+    if not guild:
+        await interaction.response.send_message("❌ This command only works in servers!", ephemeral=True)
+        return
+    overwrite = target_channel.overwrites_for(guild.default_role)
+    if overwrite is None:
+        overwrite = discord.PermissionOverwrite()
+    overwrite.send_messages = False
+    await target_channel.set_permissions(guild.default_role, overwrite=overwrite)
+    await interaction.response.send_message(f"🔒 {target_channel.mention} is now locked for @everyone.", ephemeral=True)
+
 # Run the bot
 if __name__ == '__main__':
     TOKEN = os.getenv('DISCORD_TOKEN')
