@@ -1075,6 +1075,12 @@ async def lock(interaction: discord.Interaction, channel: discord.TextChannel = 
     await target_channel.set_permissions(guild.default_role, overwrite=overwrite)
     await interaction.response.send_message(f"🔒 {target_channel.mention} is now locked for @everyone.", ephemeral=True)
 
+# Slash command: Responds with the 67 meme gif
+@bot.tree.command(name="67", description="Responds with the 67 meme gif")
+async def sixtyseven(interaction: discord.Interaction):
+    gif_url = "https://media.tenor.com/1QwQvQw1QwQAAAAC/sixseven-six-seven.gif"
+    await interaction.response.send_message(gif_url)
+
 # Run the bot
 if __name__ == '__main__':
     TOKEN = os.getenv('DISCORD_TOKEN')
