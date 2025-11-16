@@ -498,6 +498,7 @@ async def getpfp(
 )
 async def webhooksend(interaction: discord.Interaction, webhook_url: str, message: str, webhook_name: str = None):
     import aiohttp
+    from urllib.parse import urlparse
     
     # Defer the response to avoid timeout
     try:
@@ -505,14 +506,18 @@ async def webhooksend(interaction: discord.Interaction, webhook_url: str, messag
     except Exception:
         pass
     
-    # Validate webhook URL
-    allowed_prefixes = (
-        "https://discord.com/api/webhooks/",
-        "https://discordapp.com/api/webhooks/",
-        "https://canary.discord.com/api/webhooks/",
-        "https://ptb.discord.com/api/webhooks/",
-    )
-    if not any(webhook_url.startswith(p) for p in allowed_prefixes):
+    # Validate webhook URL (robust: trim, parse host & path)
+    normalized = (webhook_url or "").strip()
+    parsed = urlparse(normalized)
+    host = (parsed.netloc or "").lower()
+    path = parsed.path or ""
+    allowed_hosts = {
+        "discord.com",
+        "discordapp.com",
+        "canary.discord.com",
+        "ptb.discord.com",
+    }
+    if host not in allowed_hosts or not path.startswith("/api/webhooks/"):
         try:
             await interaction.edit_original_response(
                 content=(
@@ -534,7 +539,7 @@ async def webhooksend(interaction: discord.Interaction, webhook_url: str, messag
             if webhook_name:
                 payload["username"] = webhook_name
             
-            async with session.post(webhook_url, json=payload) as resp:
+            async with session.post(normalized, json=payload) as resp:
                 if resp.status == 204 or resp.status == 200:
                     await interaction.edit_original_response(content="✅ Message sent via webhook!")
                     print(f"[webhooksend] Sent message via webhook (name: {webhook_name or 'default'})")
