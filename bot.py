@@ -506,9 +506,23 @@ async def webhooksend(interaction: discord.Interaction, webhook_url: str, messag
         pass
     
     # Validate webhook URL
-    if not webhook_url.startswith("https://discord.com/api/webhooks/"):
+    allowed_prefixes = (
+        "https://discord.com/api/webhooks/",
+        "https://discordapp.com/api/webhooks/",
+        "https://canary.discord.com/api/webhooks/",
+        "https://ptb.discord.com/api/webhooks/",
+    )
+    if not any(webhook_url.startswith(p) for p in allowed_prefixes):
         try:
-            await interaction.edit_original_response(content="❌ Invalid webhook URL. Must start with `https://discord.com/api/webhooks/`")
+            await interaction.edit_original_response(
+                content=(
+                    "❌ Invalid webhook URL. Must start with one of:\n"
+                    "- https://discord.com/api/webhooks/\n"
+                    "- https://discordapp.com/api/webhooks/\n"
+                    "- https://canary.discord.com/api/webhooks/\n"
+                    "- https://ptb.discord.com/api/webhooks/"
+                )
+            )
         except Exception:
             pass
         return
