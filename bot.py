@@ -723,13 +723,13 @@ async def disablewelcome(interaction: discord.Interaction):
 
 @bot.event
 async def on_member_join(member):
-    # Skip DM welcome, use server channel if configured
     guild_id = member.guild.id
+    print(f"[DEBUG] Member joined: {member} (ID: {member.id}) in guild {guild_id}")
     settings = guild_settings.get(guild_id, {})
     welcome_ch_id = settings.get("welcome_channel")
-    
     if welcome_ch_id:
         channel = member.guild.get_channel(welcome_ch_id)
+        print(f"[DEBUG] Welcome channel: {channel}")
         if channel:
             try:
                 embed = discord.Embed(
@@ -743,13 +743,13 @@ async def on_member_join(member):
                 print(f"[on_member_join] Sent welcome for {member} in guild {guild_id}")
             except Exception as e:
                 print(f"[on_member_join] Failed to send welcome: {e}")
-
     # Autorole assignment
-    guild_id = member.guild.id
     autorole_conf = autorole_settings.get(guild_id, {})
     role_id = autorole_conf.get("autorole")
+    print(f"[DEBUG] Autorole config: {autorole_conf}")
     if role_id:
         role = member.guild.get_role(role_id)
+        print(f"[DEBUG] Autorole: {role}")
         if role:
             try:
                 await member.add_roles(role, reason="Autorole on join")
@@ -793,15 +793,18 @@ async def on_message(message):
 async def on_raw_reaction_add(payload):
     guild_id = payload.guild_id
     user_id = payload.user_id
+    print(f"[DEBUG] Reaction add: user {user_id} in guild {guild_id}, channel {payload.channel_id}, message {payload.message_id}, emoji {payload.emoji}")
     if not guild_id or not user_id:
         return
     conf = autorole_settings.get(guild_id, {}).get("verification")
+    print(f"[DEBUG] Verification config: {conf}")
     if not conf:
         return
     if payload.channel_id == conf["channel_id"] and payload.message_id == conf["message_id"] and str(payload.emoji) == "✅":
         guild = bot.get_guild(guild_id)
         member = guild.get_member(user_id) if guild else None
         role = guild.get_role(conf["role_id"]) if guild else None
+        print(f"[DEBUG] Member: {member}, Role: {role}")
         if member and role:
             try:
                 await member.add_roles(role, reason="Verified via reaction")
