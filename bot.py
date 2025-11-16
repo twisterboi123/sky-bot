@@ -865,6 +865,95 @@ async def leavetest(interaction: discord.Interaction):
     await channel.send(embed=embed)
     await interaction.response.send_message(f"✅ Test leave sent to {channel.mention}.", ephemeral=True)
 
+# Slash command: Set Autorole (Admin only)
+@bot.tree.command(name="setautorole", description="Set an autorole for new members (Admin only)")
+@app_commands.describe(role="The role to assign automatically")
+@app_commands.checks.has_permissions(administrator=True)
+async def setautorole(interaction: discord.Interaction, role: discord.Role):
+    guild_id = interaction.guild.id
+    if guild_id not in autorole_settings:
+        autorole_settings[guild_id] = {}
+    
+    autorole_settings[guild_id]["autorole"] = role.id
+    try:
+        await interaction.response.send_message(f"✅ Autorole set to {role.mention}.")
+        print(f"[setautorole] Guild {guild_id}: Autorole set to {role.name}")
+    except Exception as e:
+        print(f"[setautorole] Failed: {e}")
+
+# Slash command: Remove Autorole (Admin only)
+@bot.tree.command(name="removeautorole", description="Remove the autorole from new members (Admin only)")
+@app_commands.checks.has_permissions(administrator=True)
+async def removeautorole(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+    if guild_id in autorole_settings:
+        del autorole_settings[guild_id]
+        try:
+            await interaction.response.send_message("✅ Autorole removed.")
+            print(f"[removeautorole] Guild {guild_id}: Autorole removed")
+        except Exception as e:
+            print(f"[removeautorole] Failed: {e}")
+    else:
+        await interaction.response.send_message("ℹ️ No autorole set for this server.")
+
+# Slash command: Setup Verification (Admin only)
+@bot.tree.command(name="setupverification", description="Setup verification role via reaction (Admin only)")
+@app_commands.describe(
+    channel="Channel for verification message",
+    message="The verification message",
+    role="Role to assign upon verification"
+)
+@app_commands.checks.has_permissions(administrator=True)
+async def setupverification(
+    interaction: discord.Interaction,
+    channel: discord.TextChannel,
+    message: str,
+    role: discord.Role
+):
+    guild_id = interaction.guild.id
+    if guild_id not in autorole_settings:
+        autorole_settings[guild_id] = {}
+    
+    autorole_settings[guild_id]["verification"] = {
+        "channel_id": channel.id,
+        "message_id": None,  # To be filled after sending the message
+        "role_id": role.id
+    }
+    
+    # Send the verification message
+    try:
+        verify_msg = await channel.send(
+            message,
+            embed=None,
+            allowed_mentions=discord.AllowedMentions.none()
+        )
+        # Add reaction for verification
+        await verify_msg.add_reaction("✅")
+        
+        # Update the message ID in settings
+        autorole_settings[guild_id]["verification"]["message_id"] = verify_msg.id
+        
+        await interaction.response.send_message(f"✅ Verification setup complete. Message ID: {verify_msg.id}")
+        print(f"[setupverification] Guild {guild_id}: Verification set up in {channel.name}")
+    except Exception as e:
+        print(f"[setupverification] Failed: {e}")
+        await interaction.response.send_message(f"❌ Failed to set up verification: {e}", ephemeral=True)
+
+# Slash command: Remove Verification (Admin only)
+@bot.tree.command(name="removeverification", description="Remove verification setup (Admin only)")
+@app_commands.checks.has_permissions(administrator=True)
+async def removeverification(interaction: discord.Interaction):
+    guild_id = interaction.guild.id
+    if guild_id in autorole_settings and "verification" in autorole_settings[guild_id]:
+        del autorole_settings[guild_id]["verification"]
+        try:
+            await interaction.response.send_message("✅ Verification removed.")
+            print(f"[removeverification] Guild {guild_id}: Verification removed")
+        except Exception as e:
+            print(f"[removeverification] Failed: {e}")
+    else:
+        await interaction.response.send_message("ℹ️ No verification setup for this server.")
+
 # Slash command: Send a message to any channel (Admin only)
 @bot.tree.command(name="say", description="Send a message to any channel (Admin only)")
 @app_commands.describe(message="The message to send", channel="Channel to send the message in (optional)")
