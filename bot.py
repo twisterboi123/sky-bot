@@ -18,6 +18,10 @@ bot = commands.Bot(command_prefix='!', intents=intents)
 # Format: {guild_id: {"welcome_channel": channel_id, "leave_channel": channel_id}}
 guild_settings = {}
 
+# In-memory storage for autorole and verification config
+# Format: {guild_id: {"autorole": role_id, "verification": {"channel_id": ..., "message_id": ..., "role_id": ...}}}
+autorole_settings = {}
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
@@ -25,7 +29,7 @@ async def on_ready():
     print('------')
     # Set presence to Online with a friendly activity
     try:
-        activity = discord.Activity(type=discord.ActivityType.watching, name="for /raiz • /diag")
+        activity = discord.Activity(type=discord.ActivityType.watching, name="for /raiz • /diag | Support: discord.gg/DZEkJ29dZ3")
         await bot.change_presence(status=discord.Status.online, activity=activity)
     except Exception as e:
         print(f'Failed to set presence: {e}')
@@ -740,6 +744,19 @@ async def on_member_join(member):
             except Exception as e:
                 print(f"[on_member_join] Failed to send welcome: {e}")
 
+    # Autorole assignment
+    guild_id = member.guild.id
+    autorole_conf = autorole_settings.get(guild_id, {})
+    role_id = autorole_conf.get("autorole")
+    if role_id:
+        role = member.guild.get_role(role_id)
+        if role:
+            try:
+                await member.add_roles(role, reason="Autorole on join")
+                print(f"[on_member_join] Assigned autorole {role.name} to {member}")
+            except Exception as e:
+                print(f"[on_member_join] Failed to assign autorole: {e}")
+
 @bot.event
 async def on_member_remove(member):
     # Send leave notification if configured
@@ -770,6 +787,83 @@ async def on_message(message):
     
     # Process commands
     await bot.process_commands(message)
+
+# Verification reaction role handler
+@bot.event
+async def on_raw_reaction_add(payload):
+    guild_id = payload.guild_id
+    user_id = payload.user_id
+    if not guild_id or not user_id:
+        return
+    conf = autorole_settings.get(guild_id, {}).get("verification")
+    if not conf:
+        return
+    if payload.channel_id == conf["channel_id"] and payload.message_id == conf["message_id"] and str(payload.emoji) == "✅":
+        guild = bot.get_guild(guild_id)
+        member = guild.get_member(user_id) if guild else None
+        role = guild.get_role(conf["role_id"]) if guild else None
+        if member and role:
+            try:
+                await member.add_roles(role, reason="Verified via reaction")
+                print(f"[verification] Assigned {role.name} to {member}")
+            except Exception as e:
+                print(f"[verification] Failed to assign role: {e}")
+
+# Slash command: Send test welcome message (Admin only)
+@bot.tree.command(name="welcometest", description="Send a test welcome message to the configured channel (Admin only)")
+@app_commands.checks.has_permissions(administrator=True)
+async def welcometest(interaction: discord.Interaction):
+    guild = interaction.guild
+    if not guild:
+        await interaction.response.send_message("❌ This command only works in servers!", ephemeral=True)
+        return
+    guild_id = guild.id
+    settings = guild_settings.get(guild_id, {})
+    welcome_ch_id = settings.get("welcome_channel")
+    if not welcome_ch_id:
+        await interaction.response.send_message("ℹ️ No welcome channel configured. Use /setupwelcome first.", ephemeral=True)
+        return
+    channel = guild.get_channel(welcome_ch_id)
+    if not channel:
+        await interaction.response.send_message("❌ Configured welcome channel not found.", ephemeral=True)
+        return
+    embed = discord.Embed(
+        title="👋 Welcome! (Test)",
+        description=f"{interaction.user.mention} just joined the server!",
+        color=discord.Color.green()
+    )
+    embed.set_thumbnail(url=interaction.user.display_avatar.url)
+    embed.set_footer(text=f"Test message • Member #{len(guild.members)}")
+    await channel.send(embed=embed)
+    await interaction.response.send_message(f"✅ Test welcome sent to {channel.mention}.", ephemeral=True)
+
+# Slash command: Send test leave message (Admin only)
+@bot.tree.command(name="leavetest", description="Send a test leave message to the configured channel (Admin only)")
+@app_commands.checks.has_permissions(administrator=True)
+async def leavetest(interaction: discord.Interaction):
+    guild = interaction.guild
+    if not guild:
+        await interaction.response.send_message("❌ This command only works in servers!", ephemeral=True)
+        return
+    guild_id = guild.id
+    settings = guild_settings.get(guild_id, {})
+    leave_ch_id = settings.get("leave_channel")
+    if not leave_ch_id:
+        await interaction.response.send_message("ℹ️ No leave channel configured. Use /setupwelcome first.", ephemeral=True)
+        return
+    channel = guild.get_channel(leave_ch_id)
+    if not channel:
+        await interaction.response.send_message("❌ Configured leave channel not found.", ephemeral=True)
+        return
+    embed = discord.Embed(
+        title="👋 Goodbye! (Test)",
+        description=f"{interaction.user.mention} left the server.",
+        color=discord.Color.red()
+    )
+    embed.set_thumbnail(url=interaction.user.display_avatar.url)
+    embed.set_footer(text="Test message")
+    await channel.send(embed=embed)
+    await interaction.response.send_message(f"✅ Test leave sent to {channel.mention}.", ephemeral=True)
 
 # Run the bot
 if __name__ == '__main__':
