@@ -14,6 +14,10 @@ intents.members = True
 
 bot = commands.Bot(command_prefix='!', intents=intents)
 
+# Simple in-memory storage for welcome/leave channels per guild
+# Format: {guild_id: {"welcome_channel": channel_id, "leave_channel": channel_id}}
+guild_settings = {}
+
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
@@ -634,9 +638,129 @@ async def diag(interaction: discord.Interaction):
     except Exception as e:
         print(f"[diag] Failed to send diagnostics: {e}")
 
+# Slash command: Setup Welcome/Leave (Server Only, Admin)
+@bot.tree.command(name="setupwelcome", description="Configure welcome and leave notifications (Admin only) 👋")
+@app_commands.describe(
+    welcome_channel="Channel for welcome messages (optional)",
+    leave_channel="Channel for leave messages (optional)"
+)
+@app_commands.checks.has_permissions(administrator=True)
+async def setupwelcome(
+    interaction: discord.Interaction,
+    welcome_channel: discord.TextChannel | None = None,
+    leave_channel: discord.TextChannel | None = None
+):
+    # Only works in guilds (servers)
+    if not interaction.guild:
+        try:
+            await interaction.response.send_message("❌ This command only works in servers, not DMs!", ephemeral=True)
+        except Exception:
+            pass
+        return
+    
+    try:
+        await interaction.response.defer(ephemeral=True)
+    except Exception:
+        pass
+    
+    guild_id = interaction.guild.id
+    if guild_id not in guild_settings:
+        guild_settings[guild_id] = {}
+    
+    changes = []
+    if welcome_channel:
+        guild_settings[guild_id]["welcome_channel"] = welcome_channel.id
+        changes.append(f"✅ Welcome notifications → {welcome_channel.mention}")
+    
+    if leave_channel:
+        guild_settings[guild_id]["leave_channel"] = leave_channel.id
+        changes.append(f"✅ Leave notifications → {leave_channel.mention}")
+    
+    if not changes:
+        try:
+            await interaction.edit_original_response(
+                content="ℹ️ No channels specified. Use:\n`/setupwelcome welcome_channel:#channel leave_channel:#channel`"
+            )
+        except Exception:
+            pass
+        return
+    
+    response = "**Welcome/Leave Setup Updated:**\n" + "\n".join(changes)
+    try:
+        await interaction.edit_original_response(content=response)
+        print(f"[setupwelcome] Guild {guild_id}: {changes}")
+    except Exception as e:
+        print(f"[setupwelcome] Failed: {e}")
+
+# Slash command: Disable Welcome/Leave (Server Only, Admin)
+@bot.tree.command(name="disablewelcome", description="Disable welcome/leave notifications (Admin only) 🚫")
+@app_commands.checks.has_permissions(administrator=True)
+async def disablewelcome(interaction: discord.Interaction):
+    if not interaction.guild:
+        try:
+            await interaction.response.send_message("❌ This command only works in servers!", ephemeral=True)
+        except Exception:
+            pass
+        return
+    
+    guild_id = interaction.guild.id
+    if guild_id in guild_settings:
+        del guild_settings[guild_id]
+        try:
+            await interaction.response.send_message("✅ Welcome and leave notifications disabled.", ephemeral=True)
+            print(f"[disablewelcome] Disabled for guild {guild_id}")
+        except Exception:
+            pass
+    else:
+        try:
+            await interaction.response.send_message("ℹ️ No notifications were configured for this server.", ephemeral=True)
+        except Exception:
+            pass
+
 @bot.event
 async def on_member_join(member):
-    await member.send(f'Welcome to the server, {member.mention}!')
+    # Skip DM welcome, use server channel if configured
+    guild_id = member.guild.id
+    settings = guild_settings.get(guild_id, {})
+    welcome_ch_id = settings.get("welcome_channel")
+    
+    if welcome_ch_id:
+        channel = member.guild.get_channel(welcome_ch_id)
+        if channel:
+            try:
+                embed = discord.Embed(
+                    title="👋 Welcome!",
+                    description=f"{member.mention} just joined the server!",
+                    color=discord.Color.green()
+                )
+                embed.set_thumbnail(url=member.display_avatar.url)
+                embed.set_footer(text=f"Member #{len(member.guild.members)}")
+                await channel.send(embed=embed)
+                print(f"[on_member_join] Sent welcome for {member} in guild {guild_id}")
+            except Exception as e:
+                print(f"[on_member_join] Failed to send welcome: {e}")
+
+@bot.event
+async def on_member_remove(member):
+    # Send leave notification if configured
+    guild_id = member.guild.id
+    settings = guild_settings.get(guild_id, {})
+    leave_ch_id = settings.get("leave_channel")
+    
+    if leave_ch_id:
+        channel = member.guild.get_channel(leave_ch_id)
+        if channel:
+            try:
+                embed = discord.Embed(
+                    title="👋 Goodbye!",
+                    description=f"{member.mention} left the server.",
+                    color=discord.Color.red()
+                )
+                embed.set_thumbnail(url=member.display_avatar.url)
+                await channel.send(embed=embed)
+                print(f"[on_member_remove] Sent leave for {member} in guild {guild_id}")
+            except Exception as e:
+                print(f"[on_member_remove] Failed to send leave: {e}")
 
 @bot.event
 async def on_message(message):
