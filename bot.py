@@ -357,7 +357,7 @@ async def hack(interaction: discord.Interaction, user: discord.Member):
         "💾 Downloading data... 45%",
         "💾 Downloading data... 78%",
         "💾 Downloading data... 100%",
-        f"✅ Successfully hacked {user.mention}!\n\n**Stolen Data:**\n🔑 Password: `ilovemom123`\n📧 Email: `{user.name}@totallyrealmail.com`\n💳 Credit Card: `6767 6767 6767 6767`\n📍 IP Address: `127.0.0.1`\n⚠️ Browser History: *[REDACTED - too embarrassing]*"
+        f"✅ Successfully hacked {user.mention}!\n\n**Stolen Data:**\n🔑 Password: `ilovemom123`\n📧 Email: `{user.name}@totallyrealmail.com`\n💳 Credit Card: `6767 6767 6767 6767`\n📍 IP Address: `127.0.0.1`\n⚠️ Browser History: *[REDACTED - too embarrassing]*\n\n*Disclaimer: This command is a joke. No real hacking is happening!*"
     ]
     
     try:
