@@ -800,11 +800,12 @@ async def on_raw_reaction_add(payload):
     print(f"[DEBUG] Verification config: {conf}")
     if not conf:
         return
+    # Always assign the role specified in the verification config
     if payload.channel_id == conf["channel_id"] and payload.message_id == conf["message_id"] and str(payload.emoji) == "✅":
         guild = bot.get_guild(guild_id)
         member = guild.get_member(user_id) if guild else None
         role = guild.get_role(conf["role_id"]) if guild else None
-        print(f"[DEBUG] Member: {member}, Role: {role}")
+        print(f"[DEBUG] Member: {member}, Role to assign: {role}")
         if member and role:
             try:
                 await member.add_roles(role, reason="Verified via reaction")
