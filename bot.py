@@ -754,11 +754,11 @@ async def on_member_join(member):
     if welcome_ch_id:
         channel = member.guild.get_channel(welcome_ch_id)
         print(f"[DEBUG] Welcome channel: {channel}")
-        if channel:
+        if channel and channel.permissions_for(member.guild.me).send_messages:
             try:
                 embed = discord.Embed(
                     title="👋 Welcome!",
-                    description=f"{member.mention} just joined the server!",
+                    description=f"Welcome {member.mention} to {member.guild.name}!",
                     color=discord.Color.green()
                 )
                 embed.set_thumbnail(url=member.display_avatar.url)
@@ -767,6 +767,10 @@ async def on_member_join(member):
                 print(f"[on_member_join] Sent welcome for {member} in guild {guild_id}")
             except Exception as e:
                 print(f"[on_member_join] Failed to send welcome: {e}")
+        else:
+            print(f"[on_member_join] Bot missing send_messages permission in welcome channel {welcome_ch_id}")
+    else:
+        print(f"[on_member_join] No welcome channel configured for guild {guild_id}")
     # Autorole assignment
     autorole_conf = autorole_settings.get(guild_id, {})
     role_id = autorole_conf.get("autorole")
@@ -780,6 +784,8 @@ async def on_member_join(member):
                 print(f"[on_member_join] Assigned autorole {role.name} to {member}")
             except Exception as e:
                 print(f"[on_member_join] Failed to assign autorole: {e}")
+        else:
+            print(f"[on_member_join] Autorole ID {role_id} not found in guild {guild_id}")
 
 @bot.event
 async def on_member_remove(member):
