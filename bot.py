@@ -871,9 +871,7 @@ async def leavetest(interaction: discord.Interaction):
 @app_commands.checks.has_permissions(administrator=True)
 async def say(interaction: discord.Interaction, message: str, channel: discord.TextChannel = None):
     target_channel = channel or interaction.channel
-    embed = discord.Embed(description=message, color=discord.Color.blurple())
-    embed.set_footer(text=f"Sent by {interaction.user.display_name}")
-    await target_channel.send(embed=embed)
+    await target_channel.send(message)
     await interaction.response.send_message(f"✅ Message sent to {target_channel.mention}.", ephemeral=True)
 
 # Run the bot
