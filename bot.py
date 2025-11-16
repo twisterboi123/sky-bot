@@ -1081,6 +1081,51 @@ async def sixtyseven(interaction: discord.Interaction):
     tenor_url = "https://tenor.com/view/sixseven-six-seven-six-seve-67-gif-14143337669032958349"
     await interaction.response.send_message(tenor_url)
 
+# Slash command: Ban a user (Admin only)
+@bot.tree.command(name="ban", description="Ban a user from the server (Admin only)")
+@app_commands.describe(user="User to ban", reason="Reason for ban (optional)")
+@app_commands.checks.has_permissions(ban_members=True)
+async def ban(interaction: discord.Interaction, user: discord.Member, reason: str = None):
+    try:
+        await user.ban(reason=reason)
+        await interaction.response.send_message(f"✅ {user.mention} has been banned.", ephemeral=True)
+        await log_event(interaction.guild, f"User {user} banned by {interaction.user}. Reason: {reason or 'No reason provided'}")
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Failed to ban {user.mention}: {e}", ephemeral=True)
+
+# Slash command: Kick a user (Admin only)
+@bot.tree.command(name="kick", description="Kick a user from the server (Admin only)")
+@app_commands.describe(user="User to kick", reason="Reason for kick (optional)")
+@app_commands.checks.has_permissions(kick_members=True)
+async def kick(interaction: discord.Interaction, user: discord.Member, reason: str = None):
+    try:
+        await user.kick(reason=reason)
+        await interaction.response.send_message(f"✅ {user.mention} has been kicked.", ephemeral=True)
+        await log_event(interaction.guild, f"User {user} kicked by {interaction.user}. Reason: {reason or 'No reason provided'}")
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Failed to kick {user.mention}: {e}", ephemeral=True)
+
+# Slash command: Warn a user (Admin only)
+@bot.tree.command(name="warn", description="Warn a user (Admin only)")
+@app_commands.describe(user="User to warn", reason="Reason for warning (optional)")
+@app_commands.checks.has_permissions(manage_guild=True)
+async def warn(interaction: discord.Interaction, user: discord.Member, reason: str = None):
+    await interaction.response.send_message(f"⚠️ {user.mention} has been warned. Reason: {reason or 'No reason provided'}", ephemeral=True)
+    await log_event(interaction.guild, f"User {user} warned by {interaction.user}. Reason: {reason or 'No reason provided'}")
+
+# Slash command: Set slowmode for a channel (Admin only)
+@bot.tree.command(name="slowmode", description="Set slowmode for a channel (Admin only)")
+@app_commands.describe(seconds="Slowmode duration in seconds (0 to disable)", channel="Channel to set slowmode (optional, defaults to current)")
+@app_commands.checks.has_permissions(manage_channels=True)
+async def slowmode(interaction: discord.Interaction, seconds: int, channel: discord.TextChannel = None):
+    target_channel = channel or interaction.channel
+    try:
+        await target_channel.edit(slowmode_delay=seconds)
+        await interaction.response.send_message(f"⏳ Slowmode set to {seconds} seconds in {target_channel.mention}.", ephemeral=True)
+        await log_event(interaction.guild, f"Slowmode set to {seconds}s in {target_channel} by {interaction.user}")
+    except Exception as e:
+        await interaction.response.send_message(f"❌ Failed to set slowmode: {e}", ephemeral=True)
+
 # Run the bot
 if __name__ == '__main__':
     TOKEN = os.getenv('DISCORD_TOKEN')
