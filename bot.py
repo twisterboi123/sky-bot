@@ -672,7 +672,7 @@ async def diag(interaction: discord.Interaction):
     welcome_channel="Channel for welcome messages (optional)",
     leave_channel="Channel for leave messages (optional)"
 )
-@app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(manage_guild=True)
 async def setupwelcome(
     interaction: discord.Interaction,
     welcome_channel: discord.TextChannel | None = None,
@@ -722,7 +722,7 @@ async def setupwelcome(
 
 # Slash command: Disable Welcome/Leave (Server Only, Admin)
 @bot.tree.command(name="disablewelcome", description="Disable welcome/leave notifications (Admin only) 🚫")
-@app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(manage_guild=True)
 async def disablewelcome(interaction: discord.Interaction):
     if not interaction.guild:
         try:
@@ -863,7 +863,7 @@ async def on_raw_reaction_add(payload):
 
 # Slash command: Send test welcome message (Admin only)
 @bot.tree.command(name="welcometest", description="Send a test welcome message to the configured channel (Admin only)")
-@app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(manage_guild=True)
 async def welcometest(interaction: discord.Interaction):
     guild = interaction.guild
     if not guild:
@@ -891,7 +891,7 @@ async def welcometest(interaction: discord.Interaction):
 
 # Slash command: Send test leave message (Admin only)
 @bot.tree.command(name="leavetest", description="Send a test leave message to the configured channel (Admin only)")
-@app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(manage_guild=True)
 async def leavetest(interaction: discord.Interaction):
     guild = interaction.guild
     if not guild:
@@ -920,7 +920,7 @@ async def leavetest(interaction: discord.Interaction):
 # Slash command: Set Autorole (Admin only)
 @bot.tree.command(name="setautorole", description="Set an autorole for new members (Admin only)")
 @app_commands.describe(role="The role to assign automatically")
-@app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(manage_guild=True)
 async def setautorole(interaction: discord.Interaction, role: discord.Role):
     guild_id = interaction.guild.id
     if guild_id not in autorole_settings:
@@ -935,7 +935,7 @@ async def setautorole(interaction: discord.Interaction, role: discord.Role):
 
 # Slash command: Remove Autorole (Admin only)
 @bot.tree.command(name="removeautorole", description="Remove the autorole from new members (Admin only)")
-@app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(manage_guild=True)
 async def removeautorole(interaction: discord.Interaction):
     guild_id = interaction.guild.id
     if guild_id in autorole_settings:
@@ -955,7 +955,7 @@ async def removeautorole(interaction: discord.Interaction):
     message="The verification message",
     role="Role to assign upon verification"
 )
-@app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(manage_guild=True)
 async def setupverification(
     interaction: discord.Interaction,
     channel: discord.TextChannel,
@@ -993,7 +993,7 @@ async def setupverification(
 
 # Slash command: Remove Verification (Admin only)
 @bot.tree.command(name="removeverification", description="Remove verification setup (Admin only)")
-@app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(manage_guild=True)
 async def removeverification(interaction: discord.Interaction):
     guild_id = interaction.guild.id
     if guild_id in autorole_settings and "verification" in autorole_settings[guild_id]:
@@ -1009,7 +1009,7 @@ async def removeverification(interaction: discord.Interaction):
 # Slash command: Send a message to any channel (Admin only)
 @bot.tree.command(name="say", description="Send a message to any channel (Admin only)")
 @app_commands.describe(message="The message to send", channel="Channel to send the message in (optional)")
-@app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(manage_guild=True)
 async def say(interaction: discord.Interaction, message: str, channel: discord.TextChannel = None):
     target_channel = channel or interaction.channel
     await target_channel.send(message)
@@ -1018,7 +1018,7 @@ async def say(interaction: discord.Interaction, message: str, channel: discord.T
 # Slash command: Create Verification Channel (Admin only)
 @bot.tree.command(name="verifyadd", description="Set up verification: create or pick a channel (Admin only)")
 @app_commands.describe(role="Role to assign after verification", channel="Channel to use for verification (optional)", channel_name="Name for new verification channel (if not picking existing)")
-@app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(manage_guild=True)
 async def verifyadd(interaction: discord.Interaction, role: discord.Role, channel: discord.TextChannel = None, channel_name: str = "verify-here"):
     guild = interaction.guild
     if not guild:
@@ -1056,7 +1056,7 @@ async def verifyadd(interaction: discord.Interaction, role: discord.Role, channe
 # Slash command: Lock
 @bot.tree.command(name="lock", description="Lock a channel so @everyone cannot send messages (Admin only)")
 @app_commands.describe(channel="Channel to lock (optional, defaults to current)")
-@app_commands.checks.has_permissions(administrator=True)
+@app_commands.checks.has_permissions(manage_guild=True)
 async def lock(interaction: discord.Interaction, channel: discord.TextChannel = None):
     target_channel = channel or interaction.channel
     guild = interaction.guild
