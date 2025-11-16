@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 import time
 from collections import defaultdict, deque
+import random
 
 # Load environment variables (prefer existing environment vars over .env)
 load_dotenv()
@@ -242,8 +243,6 @@ async def raizv2(interaction: discord.Interaction, message: str, times: int, pub
 @bot.tree.command(name="femboymeter", description="Scientifically calculate someone's femboy levels 🎀")
 @app_commands.describe(user="The victim... I mean subject")
 async def femboymeter(interaction: discord.Interaction, user: discord.Member):
-    import random
-    
     # Generate a random percentage between 1-100
     percentage = random.randint(1, 100)
     
@@ -274,7 +273,6 @@ async def femboymeter(interaction: discord.Interaction, user: discord.Member):
 @bot.tree.command(name="gaymeter", description="Measure the rainbow levels 🌈 (totally legit science)")
 @app_commands.describe(user="Your totally straight friend")
 async def gaymeter(interaction: discord.Interaction, user: discord.Member):
-    import random
     percentage = random.randint(1, 100)
     # Keep messaging light and respectful
     result_msg = f"🌈 {user.mention} is {percentage}% on the gay‑o‑meter — just for fun!"
@@ -300,7 +298,6 @@ async def gaymeter(interaction: discord.Interaction, user: discord.Member):
 @bot.tree.command(name="skidmeter", description="Rate how much of a 💩 someone is (brutally honest)")
 @app_commands.describe(user="The lucky participant")
 async def skidmeter(interaction: discord.Interaction, user: discord.Member):
-    import random
     percentage = random.randint(1, 100)
     result_msg = f"💩 {user.mention} is **{percentage}%** a skid not sigma!"
 
@@ -1125,6 +1122,24 @@ async def slowmode(interaction: discord.Interaction, seconds: int, channel: disc
         await log_event(interaction.guild, f"Slowmode set to {seconds}s in {target_channel} by {interaction.user}")
     except Exception as e:
         await interaction.response.send_message(f"❌ Failed to set slowmode: {e}", ephemeral=True)
+
+# Slash command: Ship
+@bot.tree.command(name="ship", description="Ship two users together and show a compatibility score!")
+@app_commands.describe(user1="First user to ship", user2="Second user to ship")
+async def ship(interaction: discord.Interaction, user1: discord.Member, user2: discord.Member):
+    score = random.randint(0, 100)
+    bar = "💖" * (score // 10) + "💔" * (10 - score // 10)
+    if score > 80:
+        comment = "A match made in heaven! 💍"
+    elif score > 50:
+        comment = "There's definitely a spark! ✨"
+    elif score > 30:
+        comment = "Could work out... maybe! 🤔"
+    else:
+        comment = "Better luck next time! 😅"
+    await interaction.response.send_message(
+        f"{user1.mention} + {user2.mention} = {score}%\n{bar}\n{comment}")
+
 
 # Run the bot
 if __name__ == '__main__':
