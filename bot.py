@@ -3,6 +3,8 @@ from discord.ext import commands
 from discord import app_commands
 import os
 from dotenv import load_dotenv
+import time
+from collections import defaultdict, deque
 
 # Load environment variables (prefer existing environment vars over .env)
 load_dotenv()
@@ -21,6 +23,28 @@ guild_settings = {}
 # In-memory storage for autorole and verification config
 # Format: {guild_id: {"autorole": role_id, "verification": {"channel_id": ..., "message_id": ..., "role_id": ...}}}
 autorole_settings = {}
+
+# Anti-spam config
+SPAM_MESSAGE_LIMIT = 5  # messages
+SPAM_TIME_WINDOW = 3    # seconds
+SPAM_MUTE_ROLE_NAME = "Muted"
+
+# Anti-raid config
+RAID_JOIN_LIMIT = 5     # joins
+RAID_TIME_WINDOW = 10   # seconds
+
+# Logging config
+MODLOG_CHANNEL_NAME = "modlog"
+
+# Spam tracking
+user_message_times = defaultdict(deque)
+# Raid tracking
+recent_joins = deque()
+
+async def log_event(guild, message):
+    channel = discord.utils.get(guild.text_channels, name=MODLOG_CHANNEL_NAME)
+    if channel:
+        await channel.send(f"[LOG] {message}")
 
 @bot.event
 async def on_ready():
@@ -784,6 +808,24 @@ async def on_message(message):
     # Ignore messages from the bot itself
     if message.author == bot.user:
         return
+    
+    # Anti-spam
+    if message.guild and not message.author.bot:
+        now = time.time()
+        times = user_message_times[message.author.id]
+        times.append(now)
+        while times and now - times[0] > SPAM_TIME_WINDOW:
+            times.popleft()
+        if len(times) > SPAM_MESSAGE_LIMIT:
+            # Mute user
+            mute_role = discord.utils.get(message.guild.roles, name=SPAM_MUTE_ROLE_NAME)
+            if not mute_role:
+                mute_role = await message.guild.create_role(name=SPAM_MUTE_ROLE_NAME, reason="Anti-spam mute")
+                for channel in message.guild.channels:
+                    await channel.set_permissions(mute_role, send_messages=False)
+            await message.author.add_roles(mute_role, reason="Spamming")
+            await log_event(message.guild, f"User {message.author} muted for spamming in {message.channel.mention}")
+            await message.channel.send(f"{message.author.mention} has been muted for spamming.")
     
     # Process commands
     await bot.process_commands(message)
