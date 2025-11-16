@@ -1,9 +1,12 @@
 services:
   - type: background_worker
     name: sky-bot
+    runtime: python
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: python bot.py
     envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
       - key: DISCORD_TOKEN
         sync: false
