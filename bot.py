@@ -431,29 +431,60 @@ async def touch(interaction: discord.Interaction, user: discord.Member):
             pass
 
 # Slash command: Get Profile Picture
-@bot.tree.command(name="getpfp", description="Steal someone's profile pic (for research purposes) 🖼️")
-@app_commands.describe(user="The person whose pfp you want")
-async def getpfp(interaction: discord.Interaction, user: discord.Member):
+@bot.tree.command(name="getpfp", description="Get anyone's profile picture with size options 🖼️")
+@app_commands.describe(
+    user="Whose pfp? (optional, defaults to you)",
+    size="Image size (128/256/512/1024/2048)"
+)
+async def getpfp(
+    interaction: discord.Interaction,
+    user: discord.User | None = None,
+    size: int = 1024,
+):
     try:
-        # Get the user's avatar URL
-        avatar_url = user.display_avatar.url
-        
-        # Create an embed with the profile picture
+        target = user or interaction.user
+        allowed_sizes = {128, 256, 512, 1024, 2048}
+        if size not in allowed_sizes:
+            size = 1024
+
+        avatar_asset = target.display_avatar
+        sized_url = avatar_asset.with_size(size).url
+        original_url = avatar_asset.url
+
         embed = discord.Embed(
-            title=f"{user.display_name}'s Profile Picture",
-            color=discord.Color.blue()
+            title=f"{getattr(target, 'display_name', getattr(target, 'name', 'User'))}'s Profile Picture",
+            color=discord.Color.blurple(),
         )
-        embed.set_image(url=avatar_url)
-        embed.set_footer(text=f"Requested by {interaction.user.display_name}")
-        
-        await interaction.response.send_message(embed=embed)
-        print(f"[getpfp] Sent pfp for {user.display_name}")
+        embed.set_image(url=sized_url)
+        embed.set_footer(text=f"Requested by {interaction.user.display_name} • Size {size}")
+
+        # Link buttons
+        view = discord.ui.View()
+        view.add_item(discord.ui.Button(label=f"Open {size}px", url=sized_url))
+        # Always offer 2048 as max for convenience
+        try:
+            max_url = avatar_asset.with_size(2048).url
+            view.add_item(discord.ui.Button(label="Open 2048px", url=max_url))
+        except Exception:
+            pass
+        # If animated, offer GIF link
+        try:
+            if getattr(avatar_asset, "is_animated", False) and avatar_asset.is_animated():
+                gif_url = avatar_asset.with_format("gif").with_size(size).url
+                view.add_item(discord.ui.Button(label="Open GIF", url=gif_url))
+        except Exception:
+            pass
+        # Fallback original
+        view.add_item(discord.ui.Button(label="Open Original", url=original_url))
+
+        await interaction.response.send_message(embed=embed, view=view, allowed_mentions=discord.AllowedMentions.none())
+        print(f"[getpfp] Sent pfp for {getattr(target, 'display_name', getattr(target, 'name', 'User'))} at {size}px")
     except Exception as e:
         print(f"[getpfp] Failed: {e}")
         try:
             await interaction.response.send_message(
-                f"❌ Couldn't get profile picture!\nDirect link: {user.display_avatar.url}",
-                ephemeral=True
+                "❌ Couldn't get profile picture. Try again in another channel.",
+                ephemeral=True,
             )
         except Exception:
             pass
