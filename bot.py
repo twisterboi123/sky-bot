@@ -22,10 +22,6 @@ guild_settings = {}
 # Format: {guild_id: {"autorole": role_id, "verification": {"channel_id": ..., "message_id": ..., "role_id": ...}}}
 autorole_settings = {}
 
-# In-memory storage for announcement channel per guild
-# Format: {guild_id: channel_id}
-announcement_channels = {}
-
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
@@ -869,39 +865,16 @@ async def leavetest(interaction: discord.Interaction):
     await channel.send(embed=embed)
     await interaction.response.send_message(f"✅ Test leave sent to {channel.mention}.", ephemeral=True)
 
-# Slash command: Make Announcement Channel (Admin only)
-@bot.tree.command(name="makeannc", description="Set the announcement channel (Admin only)")
-@app_commands.describe(channel="Channel to use for announcements")
+# Slash command: Send a message to any channel (Admin only)
+@bot.tree.command(name="say", description="Send a message to any channel (Admin only)")
+@app_commands.describe(message="The message to send", channel="Channel to send the message in (optional)")
 @app_commands.checks.has_permissions(administrator=True)
-async def makeannc(interaction: discord.Interaction, channel: discord.TextChannel):
-    if not interaction.guild:
-        await interaction.response.send_message("❌ This command only works in servers!", ephemeral=True)
-        return
-    guild_id = interaction.guild.id
-    announcement_channels[guild_id] = channel.id
-    await interaction.response.send_message(f"✅ Announcement channel set to {channel.mention}.", ephemeral=True)
-
-# Slash command: Announce
-@bot.tree.command(name="annc", description="Send an announcement to the configured channel")
-@app_commands.describe(message="The announcement message")
-async def annc(interaction: discord.Interaction, message: str):
-    guild = interaction.guild
-    if not guild:
-        await interaction.response.send_message("❌ This command only works in servers!", ephemeral=True)
-        return
-    guild_id = guild.id
-    channel_id = announcement_channels.get(guild_id)
-    if not channel_id:
-        await interaction.response.send_message("ℹ️ No announcement channel set. Use /makeannc first.", ephemeral=True)
-        return
-    channel = guild.get_channel(channel_id)
-    if not channel:
-        await interaction.response.send_message("❌ Configured announcement channel not found.", ephemeral=True)
-        return
-    embed = discord.Embed(title="📢 Announcement", description=message, color=discord.Color.gold())
+async def say(interaction: discord.Interaction, message: str, channel: discord.TextChannel = None):
+    target_channel = channel or interaction.channel
+    embed = discord.Embed(description=message, color=discord.Color.blurple())
     embed.set_footer(text=f"Sent by {interaction.user.display_name}")
-    await channel.send(embed=embed)
-    await interaction.response.send_message(f"✅ Announcement sent to {channel.mention}.", ephemeral=True)
+    await target_channel.send(embed=embed)
+    await interaction.response.send_message(f"✅ Message sent to {target_channel.mention}.", ephemeral=True)
 
 # Run the bot
 if __name__ == '__main__':
