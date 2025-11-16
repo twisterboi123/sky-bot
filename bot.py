@@ -1,0 +1,610 @@
+import discord
+from discord.ext import commands
+from discord import app_commands
+import os
+from dotenv import load_dotenv
+
+# Load environment variables (prefer existing environment vars over .env)
+load_dotenv()
+
+# Bot setup
+intents = discord.Intents.default()
+intents.message_content = True
+intents.members = True
+
+bot = commands.Bot(command_prefix='!', intents=intents)
+
+@bot.event
+async def on_ready():
+    print(f'{bot.user} has connected to Discord!')
+    print(f'Bot ID: {bot.user.id}')
+    print('------')
+    # Set presence to Online with a friendly activity
+    try:
+        activity = discord.Activity(type=discord.ActivityType.watching, name="for /raiz • /diag")
+        await bot.change_presence(status=discord.Status.online, activity=activity)
+    except Exception as e:
+        print(f'Failed to set presence: {e}')
+    # Sync slash commands
+    try:
+        synced = await bot.tree.sync()
+        print(f'Synced {len(synced)} command(s)')
+    except Exception as e:
+        print(f'Failed to sync commands: {e}')
+
+# Slash command: RAIZ
+@bot.tree.command(name="raiz", description="Spam your message like a broken record 🔁")
+@app_commands.describe(
+    message="Your message (choose wisely)",
+    times="How many times? (1-10, don't go crazy)",
+    public="Make everyone see it (or keep it secret)"
+)
+async def raiz(interaction: discord.Interaction, message: str, times: int, public: bool=True):
+    # Validate the times parameter (respond quickly for invalid input)
+    if times < 1 or times > 10:
+        try:
+            await interaction.response.send_message("❌ Please choose a number between 1 and 10!", ephemeral=True)
+        except Exception as e:
+            print(f"[raiz] Failed to send validation error: {e}")
+        return
+
+    if not public:
+        # Private (no extra perms required): single ephemeral block
+        repeated = ("\n").join([message] * times)
+        if len(repeated) > 1900:
+            repeated = repeated[:1900] + "…"
+        try:
+            await interaction.response.send_message(repeated, ephemeral=True)
+            print(f"[raiz] Ephemeral only; sent preview for {times}")
+        except Exception as e:
+            print(f"[raiz] Failed to send ephemeral: {e}")
+        return
+
+    # Public flow (optional). Uses interaction follow-ups so only
+    # Use External Apps + Application Commands are needed (no Send Messages).
+    try:
+        await interaction.response.defer(ephemeral=True, thinking=True)
+    except Exception as e:
+        print(f"[raiz] Failed to defer interaction: {e}")
+        return
+
+    sent = 0
+    chunks = 0
+    max_chunks = 5  # Discord limits follow-ups per interaction
+    allowed_mentions = discord.AllowedMentions.none()
+    send_failed = None
+    try:
+        while sent < times and chunks < max_chunks:
+            remaining = times - sent
+            slots_left = max_chunks - chunks
+            per_chunk = (remaining + slots_left - 1) // slots_left
+            block = ("\n").join([message] * per_chunk)
+            if len(block) > 1900:
+                # Trim to avoid 2000 char limit
+                max_lines = max(1, 1900 // max(1, len(message) + 1))
+                block = ("\n").join([message] * max_lines)
+            try:
+                await interaction.followup.send(block, wait=True, allowed_mentions=allowed_mentions)
+                sent += block.count("\n") + 1
+                chunks += 1
+            except Exception as e:
+                send_failed = e
+                break
+    except Exception as e:
+        send_failed = e
+
+    print(f"[raiz] Requested {times}, actually sent {min(sent, times)} in {chunks} chunk(s)")
+    try:
+        if sent >= times:
+            await interaction.edit_original_response(content=f"✅ Sent {times}/{times} message(s) to the channel.")
+        elif sent > 0:
+            await interaction.edit_original_response(content=f"⚠️ Sent {sent}/{times}. Hit follow-up limit; try fewer repeats.")
+        else:
+            preview = ("\n").join([message] * min(times, 10))
+            if len(preview) > 1900:
+                preview = preview[:1900] + "…"
+            reason = "I couldn't post publicly here."
+            if isinstance(send_failed, discord.Forbidden):
+                reason = "I'm missing permission to post app messages here."
+            elif isinstance(send_failed, discord.HTTPException) and getattr(send_failed, 'status', None) == 403:
+                reason = "Public app messages are blocked in this channel."
+            await interaction.edit_original_response(content=(
+                f"❌ {reason}\n"
+                "Ask a mod to enable 'Use External Apps' for this channel, or grant the bot 'Send Messages'.\n\n" + preview
+            ))
+    except Exception as e:
+        print(f"[raiz] Failed to edit original response: {e}")
+
+# Slash command: RAIZ V2 (big text with spacing)
+@bot.tree.command(name="raizv2", description="Spam but BIGGER and LOUDER 📢")
+@app_commands.describe(
+    message="Your message (in CAPS energy)",
+    times="How many times? (1-10, scream responsibly)",
+    public="Make it rain big text (or whisper privately)"
+)
+async def raizv2(interaction: discord.Interaction, message: str, times: int, public: bool=True):
+    # Validate the times parameter
+    if times < 1 or times > 10:
+        try:
+            await interaction.response.send_message("❌ Please choose a number between 1 and 10!", ephemeral=True)
+        except Exception as e:
+            print(f"[raizv2] Failed to send validation error: {e}")
+        return
+
+    # Format message with # for big text - single line breaks
+    formatted_msg = f"# {message}"
+    
+    if not public:
+        # Private preview
+        repeated = ("\n").join([formatted_msg] * times)
+        if len(repeated) > 1900:
+            repeated = repeated[:1900] + "…"
+        try:
+            await interaction.response.send_message(repeated, ephemeral=True)
+            print(f"[raizv2] Ephemeral only; sent preview for {times}")
+        except Exception as e:
+            print(f"[raizv2] Failed to send ephemeral: {e}")
+        return
+
+    # Public flow
+    try:
+        await interaction.response.defer(ephemeral=True, thinking=True)
+    except Exception as e:
+        print(f"[raizv2] Failed to defer interaction: {e}")
+        return
+
+    sent = 0
+    chunks = 0
+    max_chunks = 5
+    allowed_mentions = discord.AllowedMentions.none()
+    send_failed = None
+    
+    try:
+        while sent < times and chunks < max_chunks:
+            remaining = times - sent
+            slots_left = max_chunks - chunks
+            per_chunk = (remaining + slots_left - 1) // slots_left
+            block = ("\n").join([formatted_msg] * per_chunk)
+            if len(block) > 1900:
+                # Trim to avoid 2000 char limit
+                max_lines = max(1, 1900 // max(1, len(formatted_msg) + 1))
+                block = ("\n").join([formatted_msg] * max_lines)
+            try:
+                await interaction.followup.send(block, wait=True, allowed_mentions=allowed_mentions)
+                sent += block.count("\n") + 1
+                chunks += 1
+            except Exception as e:
+                send_failed = e
+                break
+    except Exception as e:
+        send_failed = e
+
+    print(f"[raizv2] Requested {times}, actually sent {min(sent, times)} in {chunks} chunk(s)")
+    try:
+        if sent >= times:
+            await interaction.edit_original_response(content=f"✅ Sent {times}/{times} big message(s) to the channel.")
+        elif sent > 0:
+            await interaction.edit_original_response(content=f"⚠️ Sent {sent}/{times}. Hit follow-up limit; try fewer repeats.")
+        else:
+            preview = ("\n").join([formatted_msg] * min(times, 5))
+            if len(preview) > 1900:
+                preview = preview[:1900] + "…"
+            reason = "I couldn't post publicly here."
+            if isinstance(send_failed, discord.Forbidden):
+                reason = "I'm missing permission to post app messages here."
+            elif isinstance(send_failed, discord.HTTPException) and getattr(send_failed, 'status', None) == 403:
+                reason = "Public app messages are blocked in this channel."
+            await interaction.edit_original_response(content=(
+                f"❌ {reason}\n"
+                "Ask a mod to enable 'Use External Apps' for this channel, or grant the bot 'Send Messages'.\n\n" + preview
+            ))
+    except Exception as e:
+        print(f"[raizv2] Failed to edit original response: {e}")
+
+# Slash command: Femboy Meter
+@bot.tree.command(name="femboymeter", description="Scientifically calculate someone's femboy levels 🎀")
+@app_commands.describe(user="The victim... I mean subject")
+async def femboymeter(interaction: discord.Interaction, user: discord.Member):
+    import random
+    
+    # Generate a random percentage between 1-100
+    percentage = random.randint(1, 100)
+    
+    # Determine the message based on percentage
+    if percentage > 50:
+        result_msg = f"🎀 {user.mention} is **{percentage}%** femboy! They are a femboy! 💖"
+    else:
+        result_msg = f"🎀 {user.mention} is **{percentage}%** femboy!"
+    
+    # Direct public response (visible to all, shows invoker in system message)
+    try:
+        await interaction.response.send_message(
+            result_msg,
+            allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False)
+        )
+        print(f"[femboymeter] Sent result for {user.display_name}: {percentage}%")
+    except Exception as e:
+        print(f"[femboymeter] Failed to send: {e}")
+        try:
+            await interaction.response.send_message(
+                f"❌ Couldn't post the result. Preview: {result_msg}",
+                ephemeral=True
+            )
+        except Exception:
+            pass
+
+# Slash command: Gay Meter (playful)
+@bot.tree.command(name="gaymeter", description="Measure the rainbow levels 🌈 (totally legit science)")
+@app_commands.describe(user="Your totally straight friend")
+async def gaymeter(interaction: discord.Interaction, user: discord.Member):
+    import random
+    percentage = random.randint(1, 100)
+    # Keep messaging light and respectful
+    result_msg = f"🌈 {user.mention} is {percentage}% on the gay‑o‑meter — just for fun!"
+
+    # Direct public response (visible to all, shows invoker in system message)
+    try:
+        await interaction.response.send_message(
+            result_msg,
+            allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False)
+        )
+        print(f"[gaymeter] Sent result for {user.display_name}: {percentage}%")
+    except Exception as e:
+        print(f"[gaymeter] Failed to send: {e}")
+        try:
+            await interaction.response.send_message(
+                f"❌ Couldn't post the result. Preview: {result_msg}",
+                ephemeral=True
+            )
+        except Exception:
+            pass
+
+# Slash command: Skid Meter
+@bot.tree.command(name="skidmeter", description="Rate how much of a 💩 someone is (brutally honest)")
+@app_commands.describe(user="The lucky participant")
+async def skidmeter(interaction: discord.Interaction, user: discord.Member):
+    import random
+    percentage = random.randint(1, 100)
+    result_msg = f"💩 {user.mention} is **{percentage}%** a skid not sigma!"
+
+    # Direct public response (visible to all, shows invoker in system message)
+    try:
+        await interaction.response.send_message(
+            result_msg,
+            allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False)
+        )
+        print(f"[skidmeter] Sent result for {user.display_name}: {percentage}%")
+    except Exception as e:
+        print(f"[skidmeter] Failed to send: {e}")
+        try:
+            await interaction.response.send_message(
+                f"❌ Couldn't post the result. Preview: {result_msg}",
+                ephemeral=True
+            )
+        except Exception:
+            pass
+
+# Slash command: Coin Flip
+@bot.tree.command(name="coinflip", description="Let fate decide (because you can't) 🪙")
+async def coinflip(interaction: discord.Interaction):
+    import random
+    result = random.choice(["Heads", "Tails"])
+    result_msg = f"🪙 The coin landed on: **{result}**!"
+
+    # Direct public response
+    try:
+        await interaction.response.send_message(result_msg)
+        print(f"[coinflip] Flipped: {result} for {interaction.user.name}")
+    except Exception as e:
+        print(f"[coinflip] Failed to send: {e}")
+        try:
+            await interaction.response.send_message(
+                f"❌ Couldn't flip the coin. Result was: {result}",
+                ephemeral=True
+            )
+        except Exception:
+            pass
+
+# Slash command: Hack
+@bot.tree.command(name="hack", description="Hack someone (not really, it's fake lol) 💻")
+@app_commands.describe(user="The victim to 'hack'")
+async def hack(interaction: discord.Interaction, user: discord.Member):
+    import asyncio
+    
+    try:
+        await interaction.response.send_message(f"🔓 Initiating hack on {user.mention}...")
+    except Exception:
+        pass
+    
+    stages = [
+        "⚙️ Bypassing Discord firewall...",
+        "📡 Connecting to mainframe...",
+        "💾 Downloading data... 10%",
+        "💾 Downloading data... 45%",
+        "💾 Downloading data... 78%",
+        "💾 Downloading data... 100%",
+        f"✅ Successfully hacked {user.mention}!\n\n**Stolen Data:**\n🔑 Password: `ilovemom123`\n📧 Email: `{user.name}@totallyrealmail.com`\n💳 Credit Card: `6767 6767 6767 6767`\n📍 IP Address: `127.0.0.1`\n⚠️ Browser History: *[REDACTED - too embarrassing]*"
+    ]
+    
+    try:
+        for stage in stages:
+            await asyncio.sleep(1.5)
+            await interaction.edit_original_response(content=stage)
+        print(f"[hack] 'Hacked' {user.display_name}")
+    except Exception as e:
+        print(f"[hack] Failed: {e}")
+        try:
+            await interaction.followup.send(f"❌ Hack failed. {user.mention} has antivirus!", ephemeral=True)
+        except Exception:
+            pass
+
+# Slash command: Emojify
+@bot.tree.command(name="emojify", description="Turn text into PURE EMOJI ENERGY ✨")
+@app_commands.describe(text="The text to emojify")
+async def emojify(interaction: discord.Interaction, text: str):
+    emoji_map = {
+        'a': '🅰️', 'b': '🅱️', 'c': '🅲', 'd': '🅳', 'e': '🅴',
+        'f': '🅵', 'g': '🅶', 'h': '🅷', 'i': '🅸', 'j': '🅹',
+        'k': '🅺', 'l': '🅻', 'm': '🅼', 'n': '🅽', 'o': '🅾️',
+        'p': '🅿️', 'q': '🆀', 'r': '🆁', 's': '🆂', 't': '🆃',
+        'u': '🆄', 'v': '🆅', 'w': '🆆', 'x': '🆇', 'y': '🆈', 'z': '🆉',
+        '0': '0️⃣', '1': '1️⃣', '2': '2️⃣', '3': '3️⃣', '4': '4️⃣',
+        '5': '5️⃣', '6': '6️⃣', '7': '7️⃣', '8': '8️⃣', '9': '9️⃣',
+        '!': '❗', '?': '❓', ' ': '  '
+    }
+    
+    result = ''.join(emoji_map.get(char.lower(), char) for char in text)
+    
+    if len(result) > 2000:
+        result = result[:1997] + "..."
+    
+    try:
+        await interaction.response.send_message(result)
+        print(f"[emojify] Emojified text for {interaction.user.name}")
+    except Exception as e:
+        print(f"[emojify] Failed: {e}")
+        try:
+            await interaction.response.send_message("❌ Text too long or failed to emojify!", ephemeral=True)
+        except Exception:
+            pass
+
+# Slash command: UwU Meter
+@bot.tree.command(name="uwumeter", description="Check someone's UwU levels (OwO what's this?) 👉👈")
+@app_commands.describe(user="The person to check")
+async def uwumeter(interaction: discord.Interaction, user: discord.Member):
+    import random
+    percentage = random.randint(1, 100)
+    
+    if percentage < 30:
+        vibe = "Barely any UwU energy... kinda sus ngl 😐"
+    elif percentage < 60:
+        vibe = "Moderate UwU vibes detected owo"
+    elif percentage < 90:
+        vibe = "HIGH UwU LEVELS!! They're dangerously cute!! >w<"
+    else:
+        vibe = "🚨 MAXIMUM UwU OVERLOAD!! *notices your bulge* OwO 🚨"
+    
+    result_msg = f"💕 {user.mention} is **{percentage}%** UwU!\n{vibe}"
+    
+    try:
+        await interaction.response.send_message(
+            result_msg,
+            allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False)
+        )
+        print(f"[uwumeter] {user.display_name}: {percentage}%")
+    except Exception as e:
+        print(f"[uwumeter] Failed: {e}")
+        try:
+            await interaction.response.send_message(f"❌ Failed! Preview: {result_msg}", ephemeral=True)
+        except Exception:
+            pass
+
+# Slash command: Touch Grass
+@bot.tree.command(name="touch", description="Check if someone needs to touch grass 🌱")
+@app_commands.describe(user="The terminally online suspect")
+async def touch(interaction: discord.Interaction, user: discord.Member):
+    import random
+    percentage = random.randint(1, 100)
+    
+    if percentage < 20:
+        verdict = f"{user.mention} is SEVERELY grass-deficient!! 🚨\n**Prescription:** Go outside IMMEDIATELY!"
+    elif percentage < 50:
+        verdict = f"{user.mention} needs to touch grass soon... ⚠️\nIt's been a while, hasn't it?"
+    elif percentage < 80:
+        verdict = f"{user.mention} touches grass occasionally. Acceptable. ✅"
+    else:
+        verdict = f"{user.mention} is a certified grass-toucher!! 🌿\nTeach us your ways, master!"
+    
+    result_msg = f"🌱 **Touch Grass Meter: {percentage}%**\n{verdict}"
+    
+    try:
+        await interaction.response.send_message(
+            result_msg,
+            allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False)
+        )
+        print(f"[touch] {user.display_name}: {percentage}%")
+    except Exception as e:
+        print(f"[touch] Failed: {e}")
+        try:
+            await interaction.response.send_message(f"❌ Failed! Preview: {result_msg}", ephemeral=True)
+        except Exception:
+            pass
+
+# Slash command: Get Profile Picture
+@bot.tree.command(name="getpfp", description="Steal someone's profile pic (for research purposes) 🖼️")
+@app_commands.describe(user="The person whose pfp you want")
+async def getpfp(interaction: discord.Interaction, user: discord.Member):
+    try:
+        # Get the user's avatar URL
+        avatar_url = user.display_avatar.url
+        
+        # Create an embed with the profile picture
+        embed = discord.Embed(
+            title=f"{user.display_name}'s Profile Picture",
+            color=discord.Color.blue()
+        )
+        embed.set_image(url=avatar_url)
+        embed.set_footer(text=f"Requested by {interaction.user.display_name}")
+        
+        await interaction.response.send_message(embed=embed)
+        print(f"[getpfp] Sent pfp for {user.display_name}")
+    except Exception as e:
+        print(f"[getpfp] Failed: {e}")
+        try:
+            await interaction.response.send_message(
+                f"❌ Couldn't get profile picture!\nDirect link: {user.display_avatar.url}",
+                ephemeral=True
+            )
+        except Exception:
+            pass
+
+# Slash command: Webhook Send
+@bot.tree.command(name="webhooksend", description="Become an identity thief (but legal) 🕵️")
+@app_commands.describe(
+    webhook_url="The secret passage (webhook URL)",
+    message="Your undercover message",
+    webhook_name="Your fake identity (optional)"
+)
+async def webhooksend(interaction: discord.Interaction, webhook_url: str, message: str, webhook_name: str = None):
+    import aiohttp
+    
+    # Defer the response to avoid timeout
+    try:
+        await interaction.response.defer(ephemeral=True)
+    except Exception:
+        pass
+    
+    # Validate webhook URL
+    if not webhook_url.startswith("https://discord.com/api/webhooks/"):
+        try:
+            await interaction.edit_original_response(content="❌ Invalid webhook URL. Must start with `https://discord.com/api/webhooks/`")
+        except Exception:
+            pass
+        return
+    
+    # Send via webhook
+    try:
+        async with aiohttp.ClientSession() as session:
+            payload = {"content": message}
+            if webhook_name:
+                payload["username"] = webhook_name
+            
+            async with session.post(webhook_url, json=payload) as resp:
+                if resp.status == 204 or resp.status == 200:
+                    await interaction.edit_original_response(content="✅ Message sent via webhook!")
+                    print(f"[webhooksend] Sent message via webhook (name: {webhook_name or 'default'})")
+                else:
+                    error_text = await resp.text()
+                    await interaction.edit_original_response(content=f"❌ Webhook request failed with status {resp.status}.\n```\n{error_text[:500]}\n```")
+                    print(f"[webhooksend] Failed with status {resp.status}: {error_text}")
+    except Exception as e:
+        try:
+            await interaction.edit_original_response(content=f"❌ Failed to send webhook: {str(e)[:200]}")
+        except Exception:
+            pass
+        print(f"[webhooksend] Exception: {e}")
+
+# Slash command: Diagnostics (permissions in current channel)
+@bot.tree.command(name="diag", description="Show the bot's permissions in this channel")
+async def diag(interaction: discord.Interaction):
+    try:
+        await interaction.response.defer(ephemeral=True, thinking=False)
+    except Exception:
+        pass
+
+    ch = interaction.channel
+    guild = interaction.guild
+    me = guild.me if guild else None
+
+    is_thread = isinstance(ch, discord.Thread)
+    perms = None
+    details = []
+
+    # Basic context
+    try:
+        details.append(f"Channel: {getattr(ch, 'name', str(ch.id))} ({ch.id})")
+    except Exception:
+        details.append("Channel: <unknown>")
+
+    details.append(f"Type: {'Thread' if is_thread else 'Text/Other'}")
+    if is_thread:
+        try:
+            details.append(f"Thread archived: {ch.archived}")
+            details.append(f"Thread locked: {ch.locked}")
+        except Exception:
+            pass
+
+    # Permissions
+    try:
+        if me and hasattr(ch, 'permissions_for'):
+            perms = ch.permissions_for(me)
+    except Exception as e:
+        details.append(f"Permission check error: {e}")
+
+    def yn(v: bool | None):
+        return 'Yes' if v else 'No'
+
+    if perms is not None:
+        try:
+            details.append(f"View Channel: {yn(perms.view_channel)}")
+            details.append(f"Send Messages: {yn(perms.send_messages)}")
+            # send_messages_in_threads may not exist in very old versions; guard it
+            smit = getattr(perms, 'send_messages_in_threads', True)
+            details.append(f"Send In Threads: {yn(smit)}")
+            details.append(f"Embed Links: {yn(perms.embed_links)}")
+            details.append(f"Attach Files: {yn(perms.attach_files)}")
+        except Exception:
+            pass
+    else:
+        details.append("Could not resolve permissions (no guild or channel).")
+
+    # Summary recommendation
+    recs = []
+    try:
+        if perms is None or not perms.view_channel:
+            recs.append("Grant the bot View Channel in this channel.")
+        if perms is None or not perms.send_messages:
+            recs.append("Grant the bot Send Messages in this channel.")
+        smit = getattr(perms, 'send_messages_in_threads', None) if perms else None
+        if is_thread and (smit is None or not smit):
+            recs.append("Enable Send Messages in Threads for the bot role.")
+        if is_thread and hasattr(ch, 'archived') and ch.archived:
+            recs.append("Unarchive the thread or create a new open thread.")
+        if is_thread and hasattr(ch, 'locked') and ch.locked:
+            recs.append("Unlock the thread to allow posting.")
+    except Exception:
+        pass
+
+    body = "\n".join(details)
+    if recs:
+        body += "\n\nRecommendations:\n- " + "\n- ".join(recs)
+
+    try:
+        await interaction.edit_original_response(content=f"```\n{body}\n```")
+    except Exception as e:
+        print(f"[diag] Failed to send diagnostics: {e}")
+
+@bot.event
+async def on_member_join(member):
+    await member.send(f'Welcome to the server, {member.mention}!')
+
+@bot.event
+async def on_message(message):
+    # Ignore messages from the bot itself
+    if message.author == bot.user:
+        return
+    
+    # Process commands
+    await bot.process_commands(message)
+
+# Run the bot
+if __name__ == '__main__':
+    TOKEN = os.getenv('DISCORD_TOKEN')
+    if TOKEN is not None:
+        TOKEN = TOKEN.strip()
+        if TOKEN.lower().startswith('bot '):
+            TOKEN = TOKEN[4:].strip()
+    if TOKEN is None:
+        print('Error: DISCORD_TOKEN not found in environment variables')
+    else:
+        bot.run(TOKEN)
