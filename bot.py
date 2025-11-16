@@ -1078,10 +1078,8 @@ async def lock(interaction: discord.Interaction, channel: discord.TextChannel = 
 # Slash command: Responds with the 67 meme gif
 @bot.tree.command(name="67", description="Responds with the 67 meme gif")
 async def sixtyseven(interaction: discord.Interaction):
-    gif_url = "https://media.tenor.com/1QwQvQw1QwQAAAAC/sixseven-six-seven.gif"
-    embed = discord.Embed(title="67 Meme", color=discord.Color.blurple())
-    embed.set_image(url=gif_url)
-    await interaction.response.send_message(embed=embed)
+    tenor_url = "https://tenor.com/view/sixseven-six-seven-six-seve-67-gif-14143337669032958349"
+    await interaction.response.send_message(tenor_url)
 
 # Run the bot
 if __name__ == '__main__':
