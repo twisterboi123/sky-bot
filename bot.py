@@ -24,6 +24,9 @@ guild_settings = {}
 # Format: {guild_id: {"autorole": role_id, "verification": {"channel_id": ..., "message_id": ..., "role_id": ...}}}
 autorole_settings = {}
 
+# In-memory storage for log channel per guild
+log_channels = {}
+
 # Anti-spam config
 SPAM_MESSAGE_LIMIT = 5  # messages
 SPAM_TIME_WINDOW = 3    # seconds
@@ -42,7 +45,9 @@ user_message_times = defaultdict(deque)
 recent_joins = deque()
 
 async def log_event(guild, message):
-    channel = discord.utils.get(guild.text_channels, name=MODLOG_CHANNEL_NAME)
+    guild_id = guild.id
+    channel_id = log_channels.get(guild_id)
+    channel = guild.get_channel(channel_id) if channel_id else None
     if channel:
         await channel.send(f"[LOG] {message}")
 
