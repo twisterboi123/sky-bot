@@ -963,6 +963,31 @@ async def say(interaction: discord.Interaction, message: str, channel: discord.T
     await target_channel.send(message)
     await interaction.response.send_message(f"✅ Message sent to {target_channel.mention}.", ephemeral=True)
 
+# Slash command: Create Verification Channel (Admin only)
+@bot.tree.command(name="verifyadd", description="Create a verification channel that restricts new users until they verify (Admin only)")
+@app_commands.describe(role="Role to assign after verification", channel_name="Name for the verification channel (optional)")
+@app_commands.checks.has_permissions(administrator=True)
+async def verifyadd(interaction: discord.Interaction, role: discord.Role, channel_name: str = "verify-here"):
+    guild = interaction.guild
+    if not guild:
+        await interaction.response.send_message("❌ This command only works in servers!", ephemeral=True)
+        return
+    # Set up permissions: everyone can view/send in verify, but NOT elsewhere
+    overwrites = {
+        guild.default_role: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
+        role: discord.PermissionOverwrite(view_channel=False),
+        guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True)
+    }
+    channel = await guild.create_text_channel(channel_name, overwrites=overwrites, reason="Verification setup")
+    embed = discord.Embed(title="Verification Required", description=f"React with ✅ to get access!", color=discord.Color.blurple())
+    msg = await channel.send(embed=embed)
+    await msg.add_reaction("✅")
+    # Save config for reaction handler
+    guild_id = guild.id
+    autorole_settings[guild_id] = autorole_settings.get(guild_id, {})
+    autorole_settings[guild_id]["verification"] = {"channel_id": channel.id, "message_id": msg.id, "role_id": role.id}
+    await interaction.response.send_message(f"✅ Verification channel created: {channel.mention}\nUsers must react to the message to get {role.mention}.", ephemeral=True)
+
 # Run the bot
 if __name__ == '__main__':
     TOKEN = os.getenv('DISCORD_TOKEN')
