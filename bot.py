@@ -243,22 +243,19 @@ async def raizv2(interaction: discord.Interaction, message: str, times: int, pub
 @bot.tree.command(name="femboymeter", description="Scientifically calculate someone's femboy levels 🎀")
 @app_commands.describe(user="The victim... I mean subject")
 async def femboymeter(interaction: discord.Interaction, user: discord.Member):
-    # Generate a random percentage between 1-100
+    # Support DMs: default to invoker if not in guild
+    target = user if user is not None else interaction.user
     percentage = random.randint(1, 100)
-    
-    # Determine the message based on percentage
     if percentage > 50:
-        result_msg = f"🎀 {user.mention} is **{percentage}%** femboy! They are a femboy! 💖"
+        result_msg = f"🎀 {target.mention} is **{percentage}%** femboy! They are a femboy! 💖"
     else:
-        result_msg = f"🎀 {user.mention} is **{percentage}%** femboy!"
-    
-    # Direct public response (visible to all, shows invoker in system message)
+        result_msg = f"🎀 {target.mention} is **{percentage}%** femboy!"
     try:
         await interaction.response.send_message(
             result_msg,
             allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False)
         )
-        print(f"[femboymeter] Sent result for {user.display_name}: {percentage}%")
+        print(f"[femboymeter] Sent result for {getattr(target, 'display_name', getattr(target, 'name', str(target)))}: {percentage}%")
     except Exception as e:
         print(f"[femboymeter] Failed to send: {e}")
         try:
@@ -273,17 +270,15 @@ async def femboymeter(interaction: discord.Interaction, user: discord.Member):
 @bot.tree.command(name="gaymeter", description="Measure the rainbow levels 🌈 (totally legit science)")
 @app_commands.describe(user="Your totally straight friend")
 async def gaymeter(interaction: discord.Interaction, user: discord.Member):
+    target = user if user is not None else interaction.user
     percentage = random.randint(1, 100)
-    # Keep messaging light and respectful
-    result_msg = f"🌈 {user.mention} is {percentage}% on the gay‑o‑meter — just for fun!"
-
-    # Direct public response (visible to all, shows invoker in system message)
+    result_msg = f"🌈 {target.mention} is {percentage}% on the gay‑o‑meter — just for fun!"
     try:
         await interaction.response.send_message(
             result_msg,
             allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False)
         )
-        print(f"[gaymeter] Sent result for {user.display_name}: {percentage}%")
+        print(f"[gaymeter] Sent result for {getattr(target, 'display_name', getattr(target, 'name', str(target)))}: {percentage}%")
     except Exception as e:
         print(f"[gaymeter] Failed to send: {e}")
         try:
@@ -298,16 +293,15 @@ async def gaymeter(interaction: discord.Interaction, user: discord.Member):
 @bot.tree.command(name="skidmeter", description="Rate how much of a 💩 someone is (brutally honest)")
 @app_commands.describe(user="The lucky participant")
 async def skidmeter(interaction: discord.Interaction, user: discord.Member):
+    target = user if user is not None else interaction.user
     percentage = random.randint(1, 100)
-    result_msg = f"💩 {user.mention} is **{percentage}%** a skid not sigma!"
-
-    # Direct public response (visible to all, shows invoker in system message)
+    result_msg = f"💩 {target.mention} is **{percentage}%** a skid not sigma!"
     try:
         await interaction.response.send_message(
             result_msg,
             allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False)
         )
-        print(f"[skidmeter] Sent result for {user.display_name}: {percentage}%")
+        print(f"[skidmeter] Sent result for {getattr(target, 'display_name', getattr(target, 'name', str(target)))}: {percentage}%")
     except Exception as e:
         print(f"[skidmeter] Failed to send: {e}")
         try:
@@ -344,12 +338,11 @@ async def coinflip(interaction: discord.Interaction):
 @app_commands.describe(user="The victim to 'hack'")
 async def hack(interaction: discord.Interaction, user: discord.Member):
     import asyncio
-    
+    target = user if user is not None else interaction.user
     try:
-        await interaction.response.send_message(f"🔓 Initiating hack on {user.mention}...")
+        await interaction.response.send_message(f"🔓 Initiating hack on {target.mention}...")
     except Exception:
         pass
-    
     stages = [
         "⚙️ Bypassing Discord firewall...",
         "📡 Connecting to mainframe...",
@@ -357,18 +350,17 @@ async def hack(interaction: discord.Interaction, user: discord.Member):
         "💾 Downloading data... 45%",
         "💾 Downloading data... 78%",
         "💾 Downloading data... 100%",
-        f"✅ Successfully hacked {user.mention}!\n\n**Stolen Data:**\n🔑 Password: `ilovemom123`\n📧 Email: `{user.name}@totallyrealmail.com`\n💳 Credit Card: `6767 6767 6767 6767`\n📍 IP Address: `127.0.0.1`\n⚠️ Browser History: *[REDACTED - too embarrassing]*\n\n*Joke command — not real!*"
+        f"✅ Successfully hacked {target.mention}!\n\n**Stolen Data:**\n🔑 Password: `ilovemom123`\n📧 Email: `{getattr(target, 'name', str(target))}@totallyrealmail.com`\n💳 Credit Card: `6767 6767 6767 6767`\n📍 IP Address: `127.0.0.1`\n⚠️ Browser History: *[REDACTED - too embarrassing]*\n\n*Joke command — not real!*"
     ]
-    
     try:
         for stage in stages:
             await asyncio.sleep(1.5)
             await interaction.edit_original_response(content=stage)
-        print(f"[hack] 'Hacked' {user.display_name}")
+        print(f"[hack] 'Hacked' {getattr(target, 'display_name', getattr(target, 'name', str(target)))}")
     except Exception as e:
         print(f"[hack] Failed: {e}")
         try:
-            await interaction.followup.send(f"❌ Hack failed. {user.mention} has antivirus!", ephemeral=True)
+            await interaction.followup.send(f"❌ Hack failed. {target.mention} has antivirus!", ephemeral=True)
         except Exception:
             pass
 
@@ -407,8 +399,8 @@ async def emojify(interaction: discord.Interaction, text: str):
 @app_commands.describe(user="The person to check")
 async def uwumeter(interaction: discord.Interaction, user: discord.Member):
     import random
+    target = user if user is not None else interaction.user
     percentage = random.randint(1, 100)
-    
     if percentage < 30:
         vibe = "Barely any UwU energy... kinda sus ngl 😐"
     elif percentage < 60:
@@ -417,15 +409,13 @@ async def uwumeter(interaction: discord.Interaction, user: discord.Member):
         vibe = "HIGH UwU LEVELS!! They're dangerously cute!! >w<"
     else:
         vibe = "🚨 MAXIMUM UwU OVERLOAD!! *notices your bulge* OwO 🚨"
-    
-    result_msg = f"💕 {user.mention} is **{percentage}%** UwU!\n{vibe}"
-    
+    result_msg = f"💕 {target.mention} is **{percentage}%** UwU!\n{vibe}"
     try:
         await interaction.response.send_message(
             result_msg,
             allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False)
         )
-        print(f"[uwumeter] {user.display_name}: {percentage}%")
+        print(f"[uwumeter] {getattr(target, 'display_name', getattr(target, 'name', str(target)))}: {percentage}%")
     except Exception as e:
         print(f"[uwumeter] Failed: {e}")
         try:
@@ -438,25 +428,23 @@ async def uwumeter(interaction: discord.Interaction, user: discord.Member):
 @app_commands.describe(user="The terminally online suspect")
 async def touch(interaction: discord.Interaction, user: discord.Member):
     import random
+    target = user if user is not None else interaction.user
     percentage = random.randint(1, 100)
-    
     if percentage < 20:
-        verdict = f"{user.mention} is SEVERELY grass-deficient!! 🚨\n**Prescription:** Go outside IMMEDIATELY!"
+        verdict = f"{target.mention} is SEVERELY grass-deficient!! 🚨\n**Prescription:** Go outside IMMEDIATELY!"
     elif percentage < 50:
-        verdict = f"{user.mention} needs to touch grass soon... ⚠️\nIt's been a while, hasn't it?"
+        verdict = f"{target.mention} needs to touch grass soon... ⚠️\nIt's been a while, hasn't it?"
     elif percentage < 80:
-        verdict = f"{user.mention} touches grass occasionally. Acceptable. ✅"
+        verdict = f"{target.mention} touches grass occasionally. Acceptable. ✅"
     else:
-        verdict = f"{user.mention} is a certified grass-toucher!! 🌿\nTeach us your ways, master!"
-    
+        verdict = f"{target.mention} is a certified grass-toucher!! 🌿\nTeach us your ways, master!"
     result_msg = f"🌱 **Touch Grass Meter: {percentage}%**\n{verdict}"
-    
     try:
         await interaction.response.send_message(
             result_msg,
             allowed_mentions=discord.AllowedMentions(users=True, roles=False, everyone=False)
         )
-        print(f"[touch] {user.display_name}: {percentage}%")
+        print(f"[touch] {getattr(target, 'display_name', getattr(target, 'name', str(target)))}: {percentage}%")
     except Exception as e:
         print(f"[touch] Failed: {e}")
         try:
@@ -1127,6 +1115,8 @@ async def slowmode(interaction: discord.Interaction, seconds: int, channel: disc
 @bot.tree.command(name="ship", description="Ship two users together and show a compatibility score! (For science, and maybe a little chaos)")
 @app_commands.describe(user1="First user to ship", user2="Second user to ship")
 async def ship(interaction: discord.Interaction, user1: discord.Member, user2: discord.Member):
+    u1 = user1 if user1 is not None else interaction.user
+    u2 = user2 if user2 is not None else interaction.user
     score = random.randint(0, 100)
     bar = "💖" * (score // 10) + "💔" * (10 - score // 10)
     if score > 80:
@@ -1138,7 +1128,7 @@ async def ship(interaction: discord.Interaction, user1: discord.Member, user2: d
     else:
         comment = "Better luck next time! 😅"
     await interaction.response.send_message(
-        f"{user1.mention} + {user2.mention} = {score}%\n{bar}\n{comment}")
+        f"{u1.mention} + {u2.mention} = {score}%\n{bar}\n{comment}")
 
 
 # Run the bot
